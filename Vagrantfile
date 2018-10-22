@@ -24,7 +24,7 @@ Vagrant.configure("2") do |config|
    vb.customize [ "guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 1000 ]
   end
 
-  $num_instances = 3
+  $num_instances = 2  # can be set max 3
 
   # curl https://discovery.etcd.io/new?size=3
   $etcd_cluster = "node1=http://172.17.8.101:2380"
@@ -84,12 +84,12 @@ Vagrant.configure("2") do |config|
         # change time zone
         cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
         timedatectl set-timezone Asia/Shanghai
-        rm /etc/yum.repos.d/CentOS-Base.repo
-        cp /vagrant/yum/*.* /etc/yum.repos.d/
-        mv /etc/yum.repos.d/CentOS7-Base-163.repo /etc/yum.repos.d/CentOS-Base.repo
+        #rm /etc/yum.repos.d/CentOS-Base.repo
+        #cp /vagrant/yum/*.* /etc/yum.repos.d/
+        #mv /etc/yum.repos.d/CentOS7-Base-163.repo /etc/yum.repos.d/CentOS-Base.repo
         # using socat to port forward in helm tiller
         # install  kmod and ceph-common for rook
-        yum install -y wget curl conntrack-tools vim net-tools socat ntp kmod ceph-common
+        yum install -y wget curl git conntrack-tools vim net-tools socat ntp kmod ceph-common
         # enable ntp to sync time
         echo 'sync time'
         systemctl start ntpd
@@ -132,14 +132,9 @@ EOF
         rm -rf ~/.docker/
         yum install -y docker.x86_64
 
-cat > /etc/docker/daemon.json <<EOF
-{
-  "registry-mirrors" : ["http://2595fda0.m.daocloud.io"]
-}
-EOF
 
-if [[ $1 -eq 1 ]];then
-    yum install -y etcd
+
+        yum install -y etcd
     #cp /vagrant/systemd/etcd.service /usr/lib/systemd/system/
 cat > /etc/etcd/etcd.conf <<EOF
 #[Member]
@@ -172,7 +167,6 @@ EOF
         /etc/etcd/etcd-init.sh
         etcdctl cluster-health
         etcdctl ls /
-fi
 
         echo 'install flannel...'
         yum install -y flannel
@@ -296,4 +290,13 @@ EOF
   #   apt-get update
   #   apt-get install -y apache2
   # SHELL
+  config.vm.define "prometheus" do |node|
+    node.vm.hostname = "prometheus.jexia.cloud"
+    node.vm.box = "centos/7"
+    node.vm.network "private_network", ip: "172.17.8.120"
+    config.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 1
+    end
+  end
 end
