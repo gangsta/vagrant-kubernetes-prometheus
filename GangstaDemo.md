@@ -11,6 +11,8 @@
 To get started, perform a git clone on. Make sure you have [Vagrant installed](https://docs.vagrantup.com/v2/installation/), and also [VirtualBox](https://www.virtualbox.org/).
 
 ```
+# Download kubernetes-server-linux-amd64.tar.gz and kubernetes-server-linux-amd64.tar.gz in to Github directory
+# link to download https://kubernetes.io/docs/setup/release/
 vagrant up --provider virtualbox
 ```
 
