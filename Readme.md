@@ -2,16 +2,20 @@
 
 ## Overview
 
-* TBD
+Repository meant to be testing environment to play around monitoring docker in kubernetes,
+Please note that example of installation is only for **Testing** and **Playing** around tools, and not maent for any Production setup.
 
 ## Setup
+
+### Requirements
+
+* Download `kubernetes-server-linux-amd64.tar.gz` and copy `kubernetes-server-linux-amd64.tar.gz` in to current repo directory
+* link to download https://kubernetes.io/docs/setup/release/
+* **Example** ```wget https://dl.k8s.io/v1.13.0/kubernetes-server-linux-amd64.tar.gz```
 
 ### Usage
 
 To get started, perform a git clone on. Make sure you have [Vagrant installed](https://docs.vagrantup.com/v2/installation/), and also [VirtualBox](https://www.virtualbox.org/).
-
-* Download `kubernetes-server-linux-amd64.tar.gz` and `kubernetes-server-linux-amd64.tar.gz` in to Github directory
-* link to download https://kubernetes.io/docs/setup/release/
 
 ```
 vagrant up --provider virtualbox
@@ -23,7 +27,7 @@ Once vagrant is done provisioning the VMs run `vagrant status` to confirm all in
 You can run the kubernetes deployment and  service on your cluster by issuing:
 
 ```
-  vagrant ssh kube-master
+  vagrant ssh node1
   kubectl run hello-world --replicas=5 --labels="run=load-balancer-example" --image=docker.io/redis:latest
   kubectl get deployments hello-world
   kubectl describe deployments hello-world
@@ -120,14 +124,16 @@ docker rm $(docker ps -a -q)
 ```bash
 "As ROOT User"
 
+yum install wget -y
 useradd -m -s /bin/bash prometheus
 su - prometheus
 
 "As Prometheus User"
 
-wget https://github.com/prometheus/prometheus/releases/download/v2.4.3/prometheus-2.4.3.linux-amd64.tar.gz
-tar -xzvf prometheus-2.4.3.linux-amd64.tar.gz 
-mv prometheus-2.4.3.linux-amd64/ prometheus/
+wget https://github.com/prometheus/prometheus/releases/download/v2.7.1/prometheus-2.7.1.linux-amd64.tar.gz
+tar -xzvf prometheus-2.7.1.linux-amd64.tar.gz 
+mv prometheus-2.7.1.linux-amd64/ /home/prometheus/prometheus/
+chown -R prometheus:prometheus /home/prometheus/prometheus/
 
 "As ROOT User"
 
@@ -160,6 +166,7 @@ ss -putan | grep 9090
 'Should be output'
 "tcp    LISTEN     0      128      :::9090                 :::*                   users:(("prometheus",pid=7207,fd=6))"
 
+systemctl start firewalld
 firewall-cmd --add-port=9090/tcp --permanent
 firewall-cmd --reload
 
@@ -168,7 +175,7 @@ firewall-cmd --reload
 
 * Install Node Exporter 
 
-  `For this example we will take kube-node1 vagrant machine` To Use it do `vagrant ssh kube-node1`
+  `For this example we will take node1 vagrant machine` To Use it do `vagrant ssh node1`
 
 
 ```bash
@@ -222,7 +229,9 @@ vi prometheus/prometheus.yml
 
   - job_name: 'node_exporter'
     static_configs:
-      - targets: ['172.17.8.101:9100']
+      - targets:
+        - 172.17.8.101:9100
+        - 172.17.8.102:9100
 
 # 172.17.8.101:9100 Ip comes from node kube-node1 , in your case can be other
 
@@ -230,6 +239,8 @@ systemctl restart prometheus
 ```
 
 ### Install Alertmanager
+
+* Install Alertmanager
 
    `Go back to Prometheus Server` If you follow Readme example do `vagrant ssh prometheus`
 
@@ -332,7 +343,7 @@ su - prometheus
 vi prometheus/prometheus.yml
 
 rule_files:                    
-- "/home/prometheus/prometheus/alert.rules"
+  - "/home/prometheus/prometheus/alert.rules"
 
 cat >> /home/prometheus/prometheus/alert.rules <<EOF
 ---
@@ -364,6 +375,14 @@ groups:
     annotations:
       summary: Container{{ $labels.instance }} down
       description: Container {{ $labels.instance }} of job {{ $labels.job }} has been down for more than 15 seconds.
+  - alert: Container Down by Cadvisor
+    expr: container_memory_usage_bytes{container_label_io_kubernetes_container_name="gangsta"} > 62914560
+    for: 15s
+    labels:
+      severity: page
+    annotations:
+      summary: Container {{ $labels.instance }} down
+      description: Container {{ $labels.instance }} of job {{ $labels.job }} has been down for more than 15 seconds.
 EOF
 
 
@@ -380,10 +399,19 @@ vi prometheus/prometheus.yml
     scrape_interval: 5s
     scrape_timeout:  5s
     static_configs:
-    - targets: ['172.17.8.101:30036']
+    - targets:
+      - 172.17.8.101:30036
+      - 172.17.8.102:30036
+
+  - job_name: KubeCadvisor
+    scrape_interval: 5s
+    scrape_timeout:  5s
+    static_configs:
+    - targets:
+      - 172.17.8.101:30039
+      - 172.17.8.102:30039
 
 
-# 32061 port expo
 
 systemctl restart prometheus
 ```
@@ -566,3 +594,33 @@ kubeadm join 192.168.10.60:6443 --token cgecmm.clg29hllp7ji12pd --discovery-toke
 
 # wait 1 Minute
 ```
+
+# Prometheus search
+
+```bash
+
+kubectl exec -it hello-world-7cfd84d479-vxz5m -- /bin/bash
+
+
+container_memory_usage_bytes{container_label_io_kubernetes_container_name="hello-world"}
+
+run in containers
+
+swapoff -a
+dd if=/dev/zero of=/dev/shm/fill bs=1k count=1024k
+dd if=/dev/zero of=/dev/shm/fill bs=1k count=1024k
+dd if=/dev/zero of=/dev/shm/fill bs=1k count=1024k
+dd if=/dev/zero of=/dev/shm/fill bs=1k count=1024k
+dd if=/dev/zero of=/dev/shm/fill bs=1k count=1024k
+
+
+
+container_memory_usage_bytes{container_label_io_kubernetes_container_name="hello-world"} > 62914560
+
+62914560 = 60MB
+```
+
+Links for the same Docker IP in Nodes:
+  - https://github.com/kubernetes/kubernetes/issues/51322
+  - https://github.com/kubernetes/kubernetes/issues/43910
+  - Check also timezone (Mostly UTC will solve) 

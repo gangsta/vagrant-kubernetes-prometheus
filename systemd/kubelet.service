@@ -17,7 +17,8 @@ ExecStart=/usr/bin/kubelet \
             $KUBELET_HOSTNAME \
             $KUBE_ALLOW_PRIV \
             $KUBELET_POD_INFRA_CONTAINER \
-            $KUBELET_ARGS
+            $KUBELET_ARGS \
+            --cgroup-driver=cgroupfs --runtime-cgroups=/systemd/system.slice --kubelet-cgroups=/systemd/system.slice
 Restart=on-failure
 
 [Install]

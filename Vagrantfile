@@ -66,7 +66,6 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = "node#{i}"
     ip = "172.17.8.#{i+100}"
     node.vm.network "private_network", ip: ip
-    node.vm.network "public_network", bridge: "en0: Wi-Fi (AirPort)", auto_config: true
     #node.vm.synced_folder "/Users/DuffQiu/share", "/home/vagrant/share"
 
     node.vm.provider "virtualbox" do |vb|
@@ -82,8 +81,7 @@ Vagrant.configure("2") do |config|
     node.vm.provision "shell" do |s|
       s.inline = <<-SHELL
         # change time zone
-        cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-        timedatectl set-timezone Asia/Shanghai
+        timedatectl set-timezone UTC
         #rm /etc/yum.repos.d/CentOS-Base.repo
         #cp /vagrant/yum/*.* /etc/yum.repos.d/
         #mv /etc/yum.repos.d/CentOS7-Base-163.repo /etc/yum.repos.d/CentOS-Base.repo
@@ -130,7 +128,10 @@ EOF
 
         usermod -aG docker vagrant
         rm -rf ~/.docker/
-        yum install -y docker.x86_64
+        yum install -y yum-utils device-mapper-persistent-data lvm2
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install docker-ce -y
+        
 
 
 
@@ -216,6 +217,8 @@ EOF
           cp /vagrant/conf/scheduler /etc/kubernetes/
           cp /vagrant/conf/scheduler.conf /etc/kubernetes/
           cp /vagrant/node1/* /etc/kubernetes/
+
+          cp /vagrant/gangsta-yaml/* /root/
 
           systemctl daemon-reload
           systemctl enable kube-apiserver

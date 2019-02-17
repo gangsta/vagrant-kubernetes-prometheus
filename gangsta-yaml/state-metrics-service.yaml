@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: state-metrics-service
+  namespace: kube-system
+  labels: 
+    k8s-app: kube-state-metrics
+spec:
+  selector:
+    k8s-app: kube-state-metrics
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    nodePort: 30036
+    protocol: TCP
+  - name: http2
+    port: 8081
+    targetPort: 8081
+    nodePort: 30037
+    protocol: TCP

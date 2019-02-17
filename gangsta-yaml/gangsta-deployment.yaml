@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gangsta
+spec:
+  replicas: 5
+  template:
+    metadata:
+      labels:
+        app: gangsta
+    spec:
+      containers:
+      - name: gangsta
+        imagePullPolicy: Always
+        image: gangsta/dockerip:latest
+        ports:
+        - containerPort: 80
